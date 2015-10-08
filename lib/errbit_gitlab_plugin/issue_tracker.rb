@@ -102,7 +102,8 @@ module ErrbitGitlabPlugin
 
       # Check if there is a project with the given name on the server
       unless gitlab_project_id(options[:endpoint], options[:api_token], options[:path_with_namespace])
-        errs << "A project named '#{options[:path_with_namespace]}' could not be found on the server"
+        errs << "A project named '#{options[:path_with_namespace]}' could not be found on the server.
+                 Please make sure to enter it exactly as it appears in your address bar in Gitlab (case sensitive)"
         return {:base => errs.to_sentence}
       end
 
@@ -113,8 +114,6 @@ module ErrbitGitlabPlugin
       ticket = with_gitlab do |g|
         g.create_issue(gitlab_project_id, title, description: body, labels: 'errbit')
       end
-
-      #g.create_issue_note(gitlab_project_id, t.id, description_body)
 
       format('%s/%s', url, ticket.id)
     end
@@ -127,7 +126,7 @@ module ErrbitGitlabPlugin
     #
     def gitlab_project_id(gitlab_url = options[:endpoint], token = options[:api_token], project = options[:path_with_namespace])
       @project_id ||= with_gitlab(gitlab_url, token) do |g|
-        g.projects.detect { |p| p.path_with_namespace.downcase == project.downcase }.try(:id)
+        g.projects.detect { |p| p.path_with_namespace == project }.try(:id)
       end
     end
 
