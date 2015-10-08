@@ -52,6 +52,14 @@ module ErrbitGitlabPlugin
     end
 
     #
+    # Used to pass an own template to errbit's issue rendering.
+    # The rendered template is then passed to any #create_issue call.
+    #
+    def render_body_args
+      ['errbit_gitlab_plugin/issue', :formats => [:md]]
+    end
+
+    #
     # @return [String] the URL to the given project's issues section
     #
     def url
