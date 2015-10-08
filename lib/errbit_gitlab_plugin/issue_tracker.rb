@@ -4,25 +4,26 @@ module ErrbitGitlabPlugin
   class IssueTracker < ErrbitPlugin::IssueTracker
     LABEL = 'gitlab'
 
-    NOTE = ''
+    NOTE = "Creating issues may take some time as the actual project ID has to be looked up using the Gitlab API. <br/>
+            If you are using gitlab.com as installation, please make sure to use 'https://', otherwise, their API
+            will not accept some of the our commands."
 
-    FIELDS = [
-      [:account, {
-        :label       => "Gitlab URL",
-        :placeholder => "e.g. https://example.net"
-      }],
-      [:api_token, {
-        :placeholder => "API Token for your account"
-      }],
-      [:project_id, {
-        :label       => "Ticket Project ID (use Number)",
-        :placeholder => "Gitlab Project where issues will be created"
-      }],
-      [:alt_project_id, {
-        :label       => "Project Name (namespace/project)",
-        :placeholder => "Gitlab Project where issues will be created"
-      }]
-    ]
+    FIELDS = {
+        endpoint:            {
+            label:       'Gitlab URL',
+            placeholder: 'The URL to your gitlab installation or the public gitlab server, e.g. https://www.gitlab.com'
+        },
+        api_token:           {
+            label:       'API Token',
+            placeholder: "Your account's API token (see Profile -> Account)"
+        },
+        path_with_namespace: {
+            label:       'Project name',
+            placeholder: 'E.g. your_username/your_project'
+        }
+    }
+
+    IMAGE_PATH = ErrbitGitlabPlugin.root.join('vendor', 'assets', 'images')
 
     def self.label
       LABEL
@@ -32,66 +33,141 @@ module ErrbitGitlabPlugin
       NOTE
     end
 
+    #
+    # Form fields that will be presented to the administrator when setting up
+    # or editing the errbit app. The values we collect will be available for use
+    # later when we have an instance of this class.
+    #
     def self.fields
       FIELDS
     end
 
-    def self.body_template
-      @body_template ||= ERB.new(File.read(
-        File.join(
-          ErrbitGitlabPlugin.root, 'views', 'gitlab_issues_body.txt.erb'
-        )
-      ))
-    end
-
-    def self.summary_template
-      @summary_template ||= ERB.new(File.read(
-        File.join(
-          ErrbitGitlabPlugin.root, 'views', 'gitlab_issues_summary.txt.erb'
-        )
-      ))
+    #
+    # Icons to display during user interactions with this issue tracker. This
+    # method should return a hash of two-tuples, the key names being 'create',
+    # 'goto', and 'inactive'. The two-tuples should contain the icon media type
+    # and the binary icon data.
+    #
+    def self.icons
+      @icons ||= {
+          create:   ['image/png', File.read(IMAGE_PATH.join('gitlab_create.png'))],
+          goto:     ['image/png', File.read(IMAGE_PATH.join('gitlab_goto.png'))],
+          inactive: ['image/png', File.read(IMAGE_PATH.join('gitlab_inactive.png'))],
+      }
     end
 
     def url
-      sprintf('%s/%s/issues', params['account'], params['alt_project_id'])
+      format '%s/%s/issues', options[:endpoint], options[:path_with_namespace]
     end
 
     def configured?
-      params['project_id'].present? && params['api_token'].present?
+      self.class.fields.keys.all? { |field_name| options[field_name].present? }
     end
 
-    def comments_allowed?; false; end
+    def comments_allowed?
+      true
+    end
 
+    # Called to validate user input. Just return a hash of errors if there are any
     def errors
-      errors = []
-      if self.class.fields.detect {|f| params[f[0]].blank? }
-        errors << [:base, 'You must specify your Gitlab URL, API token, Project ID and Project Name']
+      errs = []
+
+      # Make sure that every field is filled out
+      self.class.fields.except(:project_id).each_with_object({}) do |(field_name, field_options), h|
+        if options[field_name].blank?
+          errs << "#{field_options[:label]} must be present"
+        end
       end
-      errors
+
+      # We can only perform the other tests if the necessary values are at least present
+      return {:base => errs.to_sentence} unless errs.size.zero?
+
+      # Check if the given endpoint actually exists
+      unless gitlab_endpoint_exists?(options[:endpoint])
+        errs << 'No Gitlab installation was found under the given URL'
+        return {:base => errs.to_sentence}
+      end
+
+      # Check if a user by the given token exists
+      unless gitlab_user_exists?(options[:endpoint], options[:api_token])
+        errs << 'No user with the given API token was found'
+        return {:base => errs.to_sentence}
+      end
+
+      # Check if there is a project with the given name on the server
+      unless gitlab_project_id(options[:endpoint], options[:api_token], options[:path_with_namespace])
+        errs << "A project named '#{options[:path_with_namespace]}' could not be found on the server"
+        return {:base => errs.to_sentence}
+      end
+
+      {}
     end
 
-    def create_issue(problem, reported_by = nil)
-      Gitlab.configure do |config|
-        config.endpoint = sprintf('%s/api/v3', params['account'])
-        config.private_token = params['api_token']
-        config.user_agent = 'Errbit User Agent'
+    def create_issue(title, body, reported_by = nil)
+      ticket = with_gitlab do |g|
+        g.create_issue(gitlab_project_id, title, description: body, labels: 'errbit')
       end
 
-      title = "[#{ problem.environment }][#{ problem.where }] #{problem.message.to_s.truncate(100)}"
-      description_summary = self.class.summary_template.result(binding)
-      description_body = self.class.body_template.result(binding)
+      #g.create_issue_note(gitlab_project_id, t.id, description_body)
 
-      ticket = Gitlab.create_issue(params['project_id'], title, {
-        :description => description_summary,
-        :labels => "errbit"
-      })
+      format('%s/%s', url, ticket.id)
+    end
 
-      Gitlab.create_issue_note(params['project_id'], ticket.id, description_body)
+    private
 
-      problem.update_attributes(
-        :issue_link => sprintf("%s/%s", url, ticket.id),
-        :issue_type => self.class.label
-      )
+    #
+    # Tries to find a project with the given name in the given Gitlab installation
+    # and returns its ID (if any)
+    #
+    def gitlab_project_id(gitlab_url = options[:endpoint], token = options[:api_token], project = options[:path_with_namespace])
+      @project_id ||= with_gitlab(gitlab_url, token) do |g|
+        g.projects.detect { |p| p.path_with_namespace.downcase == project.downcase }.try(:id)
+      end
+    end
+
+    #
+    # @return [String] a formatted APIv3 URL for the given +gitlab_url+
+    #
+    def gitlab_endpoint(gitlab_url)
+      format '%s/api/v3', gitlab_url
+    end
+
+    #
+    # Checks whether there is a gitlab installation
+    # at the given +gitlab_url+
+    #
+    def gitlab_endpoint_exists?(gitlab_url)
+      with_gitlab(gitlab_url, 'Iamsecret') do |g|
+        g.user
+      end
+    rescue Gitlab::Error::Unauthorized
+      true
+    rescue Exception
+      false
+    end
+
+    #
+    # Checks whether a user with the given +token+ exists
+    # in the gitlab installation located at +gitlab_url+
+    #
+    def gitlab_user_exists?(gitlab_url, private_token)
+      with_gitlab(gitlab_url, private_token) do |g|
+        g.user
+      end
+
+      true
+    rescue Gitlab::Error::Unauthorized
+      false
+    end
+
+    #
+    # Connects to the gitlab installation at +gitlab_url+
+    # using the given +private_token+ and executes the given block
+    #
+    def with_gitlab(gitlab_url = options[:endpoint], private_token = options[:api_token])
+      yield Gitlab.client(endpoint:      gitlab_endpoint(gitlab_url),
+                          private_token: private_token,
+                          user_agent:    'Errbit User Agent')
     end
   end
 end

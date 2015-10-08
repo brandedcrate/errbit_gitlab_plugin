@@ -1,6 +1,9 @@
 # ErrbitGitlabPlugin
 
-TODO: Write a gem description
+This gem adds Gitlab issue tracker support to Errbit.
+
+Gem versions (currently in this fork) will equal the corresponding
+`errbit_plugin` versions they are working with.
 
 ## Installation
 
@@ -18,7 +21,16 @@ Or install it yourself as:
 
 ## Usage
 
-TODO: Write usage instructions here
+Simply add your Gitlab URL, private token and project name to your errbit app.
+
+You can find your private token by clicking on "Account" in your Gitlab profile settings.
+
+Upon saving the app, the gem will automatically test if your entered
+credentials are valid and inform you otherwise.
+
+**Important**: The Gitlab API does not seem to accept POST requests when using
+a non-encrypted connection. Therefore, please make sure to use `https://` when
+using gitlab.com as URL.
 
 ## Contributing
 
