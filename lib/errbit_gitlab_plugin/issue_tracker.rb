@@ -23,8 +23,6 @@ module ErrbitGitlabPlugin
         }
     }
 
-    IMAGE_PATH = ErrbitGitlabPlugin.root.join('vendor', 'assets', 'images')
-
     def self.label
       LABEL
     end
@@ -43,19 +41,19 @@ module ErrbitGitlabPlugin
     end
 
     #
-    # Icons to display during user interactions with this issue tracker. This
-    # method should return a hash of two-tuples, the key names being 'create',
-    # 'goto', and 'inactive'. The two-tuples should contain the icon media type
-    # and the binary icon data.
+    # Icons to be displayed for this issue tracker
     #
     def self.icons
       @icons ||= {
-          create:   ['image/png', File.read(IMAGE_PATH.join('gitlab_create.png'))],
-          goto:     ['image/png', File.read(IMAGE_PATH.join('gitlab_goto.png'))],
-          inactive: ['image/png', File.read(IMAGE_PATH.join('gitlab_inactive.png'))],
+          create:   ['image/png', ErrbitGitlabPlugin.read_static_file('gitlab_create.png')],
+          goto:     ['image/png', ErrbitGitlabPlugin.read_static_file('gitlab_goto.png')],
+          inactive: ['image/png', ErrbitGitlabPlugin.read_static_file('gitlab_inactive.png')]
       }
     end
 
+    #
+    # @return [String] the URL to the given project's issues section
+    #
     def url
       format '%s/%s/issues', options[:endpoint], options[:path_with_namespace]
     end

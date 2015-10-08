@@ -32,6 +32,10 @@ credentials are valid and inform you otherwise.
 a non-encrypted connection. Therefore, please make sure to use `https://` when
 using gitlab.com as URL.
 
+Also note that Gitlab's URLs are case sensitive. If the "go to issue" link is not working
+for you (404), there is a high chance you provided your project name in a wrong case,
+e.g. `user/my_project` instead of `User/my_project`.
+
 ## Contributing
 
 1. Fork it
