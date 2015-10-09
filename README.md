@@ -1,4 +1,5 @@
-# ErrbitGitlabPlugin
+# ErrbitGitlabPlugin 
+[![Gem Version](https://badge.fury.io/rb/errbit_gitlab_plugin.svg)](https://badge.fury.io/rb/errbit_gitlab_plugin)
 
 This gem adds Gitlab issue tracker support to Errbit.
 
