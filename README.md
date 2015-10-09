@@ -9,17 +9,14 @@ updating your Errbit installation
 
 ## Installation
 
-Add this line to your application's Gemfile:
+As described in [Errbit's README](https://github.com/errbit/errbit#plugins-and-integrations), 
+just add the gem to your `UserGemfile`:
 
-    gem 'errbit_gitlab_plugin'
+    echo "gem 'errbit_gitlab_plugin'" > UserGemfile
 
 And then execute:
 
     $ bundle
-
-Or install it yourself as:
-
-    $ gem install errbit_gitlab_plugin
 
 ## Usage
 
