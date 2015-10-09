@@ -1,0 +1,43 @@
+[See this exception on Errbit](<%= app_problem_url problem.app, problem %>)
+
+<% if notice = problem.notices.first %>
+# <%= notice.message.lines.map(&:strip).join(' ') %>
+
+## Summary ##
+<% if notice.request['url'].present? %>
+### URL ###
+<%= notice.request['url'] %>
+<% end %>
+### Where ###
+    <%= notice.where %>
+
+### Occured ###
+    <%= notice.created_at.to_s(:precise) %>
+
+### Similar ###
+    <%= [notice.problem.notices_count - 1, 1].max %>
+
+## Params ##
+```ruby
+<%= pretty_hash(notice.params).html_safe %>
+```
+
+## Session ##
+```ruby
+<%= pretty_hash(notice.session).html_safe %>
+```
+
+## Backtrace ##
+```
+<% notice.backtrace.lines.each do |line| %><%= format '%4d:', line.number %> <%= line.file_relative %> -> **<%= line.method %>**
+<% end %>
+```
+
+<% if notice.env_vars.present? %>
+## Environment ##
+| Key        | Value      |
+|------------|------------|
+<% notice.env_vars.each do |key, val| %>| <%= key %> | <%= val %> |
+<% end %>
+<% end %>
+<% end %>

@@ -4,7 +4,11 @@ require 'errbit_gitlab_plugin/rails'
 
 module ErrbitGitlabPlugin
   def self.root
-    File.expand_path '../..', __FILE__
+    Pathname.new File.expand_path('../..', __FILE__)
+  end
+
+  def self.read_static_file(file)
+    File.read(root.join('static', file))
   end
 end
 
