@@ -126,7 +126,7 @@ module ErrbitGitlabPlugin
     #
     def gitlab_project_id(gitlab_url = options[:endpoint], token = options[:api_token], project = options[:path_with_namespace])
       @project_id ||= with_gitlab(gitlab_url, token) do |g|
-        g.projects.detect { |p| p.path_with_namespace == project }.try(:id)
+        g.projects.auto_paginate.detect { |p| p.path_with_namespace == project }.try(:id)
       end
     end
 
