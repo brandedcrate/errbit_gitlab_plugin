@@ -20,6 +20,10 @@ module ErrbitGitlabPlugin
         path_with_namespace: {
             label:       'Project name',
             placeholder: 'E.g. your_username/your_project'
+        },
+        labels: {
+            label:       'Issue labels (comma separated)',
+            placeholder: 'E.g. errbit'
         }
     }
 
@@ -112,7 +116,7 @@ module ErrbitGitlabPlugin
 
     def create_issue(title, body, reported_by = nil)
       ticket = with_gitlab do |g|
-        g.create_issue(gitlab_project_id, title, description: body, labels: 'errbit')
+        g.create_issue(gitlab_project_id, title, description: body, labels: options[:labels])
       end
 
       format('%s/%s', url, ticket.id)
