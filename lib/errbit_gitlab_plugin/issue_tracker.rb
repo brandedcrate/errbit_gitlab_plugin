@@ -105,7 +105,7 @@ module ErrbitGitlabPlugin
       end
 
       # Check if there is a project with the given name on the server
-      unless gitlab_project_id(options[:endpoint], options[:api_token], options[:path_with_namespace])
+      unless gitlab_project_exists?(options[:endpoint], options[:api_token], options[:path_with_namespace])
         errs << "A project named '#{options[:path_with_namespace]}' could not be found on the server.
                  Please make sure to enter it exactly as it appears in your address bar in Gitlab (case sensitive)"
         return {:base => errs.to_sentence}
@@ -116,7 +116,7 @@ module ErrbitGitlabPlugin
 
     def create_issue(title, body, reported_by = nil)
       ticket = with_gitlab do |g|
-        g.create_issue(gitlab_project_id, title, description: body, labels: options[:labels])
+        g.create_issue(urlized_project_name, title, description: body, labels: options[:labels])
       end
 
       format('%s/%s', url, ticket.id)
@@ -125,13 +125,24 @@ module ErrbitGitlabPlugin
     private
 
     #
-    # Tries to find a project with the given name in the given Gitlab installation
-    # and returns its ID (if any)
+    # Replaces `/` with the corresponding url encoding
     #
-    def gitlab_project_id(gitlab_url = options[:endpoint], token = options[:api_token], project = options[:path_with_namespace])
-      @project_id ||= with_gitlab(gitlab_url, token) do |g|
-        g.projects.auto_paginate.detect { |p| p.path_with_namespace == project }.try(:id)
+    def urlized_project_name(project_name = options[:path_with_namespace])
+      project_name.gsub('/', '%2F')
+    end
+
+    #
+    # Tries to find a project with the given name in the given Gitlab installation.
+    #
+    # @return [Gitlab::Project, NilClass] the project or +nil+ if no such project exists or
+    #   the gitlab installation raised an error (e.g. if the project name contains invalid characters)
+    #
+    def gitlab_project(gitlab_url = options[:endpoint], token = options[:api_token], project = options[:path_with_namespace])
+      @project ||= with_gitlab(gitlab_url, token) do |g|
+        g.project(urlized_project_name(project))
       end
+    rescue Gitlab::Error::NotFound, Gitlab::Error::InternalServerError
+      nil
     end
 
     #
@@ -167,6 +178,16 @@ module ErrbitGitlabPlugin
       true
     rescue Gitlab::Error::Unauthorized
       false
+    end
+
+    #
+    # Checks whether the a project with the given name exists
+    # in the given endpoint and that the given user has access to it
+    #
+    # @see #gitlab_project
+    #
+    def gitlab_project_exists?(*args)
+      !!gitlab_project(*args)
     end
 
     #
