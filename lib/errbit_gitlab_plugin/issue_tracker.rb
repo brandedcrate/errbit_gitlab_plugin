@@ -1,4 +1,5 @@
 require 'gitlab'
+require 'uri'
 
 module ErrbitGitlabPlugin
   class IssueTracker < ErrbitPlugin::IssueTracker
@@ -20,10 +21,6 @@ module ErrbitGitlabPlugin
         path_with_namespace: {
             label:       'Project name',
             placeholder: 'E.g. your_username/your_project'
-        },
-        labels: {
-            label:       'Issue labels (comma separated)',
-            placeholder: 'E.g. errbit'
         }
     }
 
@@ -67,7 +64,8 @@ module ErrbitGitlabPlugin
     # @return [String] the URL to the given project's issues section
     #
     def url
-      format '%s/%s/issues', options[:endpoint], options[:path_with_namespace]
+      uri = URI(options[:endpoint])
+      format '%s://%s/%s/issues', uri.scheme, uri.host, options[:path_with_namespace]
     end
 
     def configured?
@@ -116,7 +114,7 @@ module ErrbitGitlabPlugin
 
     def create_issue(title, body, reported_by = nil)
       ticket = with_gitlab do |g|
-        g.create_issue(gitlab_project_id, title, description: body, labels: options[:labels])
+        g.create_issue(gitlab_project_id, title, description: body, labels: 'errbit')
       end
 
       format('%s/%s', url, ticket.id)
@@ -138,7 +136,8 @@ module ErrbitGitlabPlugin
     # @return [String] a formatted APIv3 URL for the given +gitlab_url+
     #
     def gitlab_endpoint(gitlab_url)
-      format '%s/api/v3', gitlab_url
+      uri = URI(gitlab_url)
+      format '%s://%s/api/v3', uri.scheme, uri.host
     end
 
     #
