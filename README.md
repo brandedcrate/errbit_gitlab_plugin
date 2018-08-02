@@ -3,7 +3,7 @@
 
 This gem adds Gitlab issue tracker support to Errbit.
 
-Version 1.0 is compatible with Errbit 0.4.
+Version 1.0.x is compatible with Errbit >= 0.4.
 
 For (much) older versions of Errbit, try the 0.x gem versions or consider
 updating your Errbit installation
