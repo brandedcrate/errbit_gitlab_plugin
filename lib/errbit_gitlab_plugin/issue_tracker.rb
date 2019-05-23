@@ -137,11 +137,11 @@ module ErrbitGitlabPlugin
     end
 
     #
-    # @return [String] a formatted APIv3 URL for the given +gitlab_url+
+    # @return [String] a formatted APIv4 URL for the given +gitlab_url+
     #
     def gitlab_endpoint(gitlab_url)
       uri = URI(gitlab_url)
-      format '%s://%s/api/v3', uri.scheme, uri.host
+      format '%s://%s/api/v4', uri.scheme, uri.host
     end
 
     #
