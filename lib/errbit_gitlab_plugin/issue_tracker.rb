@@ -121,7 +121,23 @@ module ErrbitGitlabPlugin
         g.create_issue(gitlab_project_id, title, description: body, labels: options[:labels])
       end
 
-      format('%s/%s', url, ticket.id)
+      format('%s/%s', url, ticket.iid)
+    end
+
+    def close_issue(issue_link, closed_by = nil)
+      iid = issue_link.to_s.split("/").last.to_i
+
+      if iid.zero?
+        false
+      else
+        with_gitlab do |g|
+          g.close_issue(gitlab_project_id, iid)
+        end
+
+        true
+      end
+    rescue Gitlab::Error
+      false
     end
 
     private
@@ -137,11 +153,11 @@ module ErrbitGitlabPlugin
     end
 
     #
-    # @return [String] a formatted APIv3 URL for the given +gitlab_url+
+    # @return [String] a formatted APIv4 URL for the given +gitlab_url+
     #
     def gitlab_endpoint(gitlab_url)
       uri = URI(gitlab_url)
-      format '%s://%s/api/v3', uri.scheme, uri.host
+      format '%s://%s/api/v4', uri.scheme, uri.host
     end
 
     #
